@@ -42,7 +42,7 @@ io.on("connection", (socket) => {
     }) 
 
     socket.on("sendMessage", ({ roomId, message }) => {
-        socket.to(roomId).emit("Received message", message)
+        socket.to(roomId).emit("receiveMessage", message)
         console.log(`message sent to room ${roomId}:`, message)
     })
 

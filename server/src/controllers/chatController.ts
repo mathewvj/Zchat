@@ -1,5 +1,5 @@
 import { Response } from "express";
-import Conversation from "../models/Conversation";
+import Conversation, { Iconversation } from "../models/Conversation";
 import Message from "../models/messageModel";
 import User from "../models/User";
 import { AuthRequest } from '../middlewares/authMiddleware'
@@ -30,7 +30,7 @@ export const getRecentChats = async (req: AuthRequest, res: Response ) => {
     try {
         const userId = req.user?.id
 
-        const conversations = await Conversation.find({ participants: userId }).populate("participants", "username name").sort({ updatedAt: -1})
+        const conversations = await Conversation.find({ participants: userId }).populate("participants", "username name")
 
         const chatSummaries = await Promise.all(
             conversations.map(async(conversation) => {
@@ -39,15 +39,18 @@ export const getRecentChats = async (req: AuthRequest, res: Response ) => {
                 const otherUser = (conversation.participants as any[]).find(
                     (p) => p._id.toString() !== userId
                 )
+                const updateAt = (conversation as Iconversation).updatedAt
 
                 return {
                     _id: conversation._id,
                     user: otherUser,
                     lastMessage : lastMessage?.text || "",
-                    lastMessageTime : lastMessage?.createdAt,
+                    lastMessageTime : lastMessage?.createdAt || updateAt,
                 }
             })
         )
+
+        chatSummaries.sort((a,b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime())
         res.status(200).json(chatSummaries)
     } catch (error) {
         console.error(error)

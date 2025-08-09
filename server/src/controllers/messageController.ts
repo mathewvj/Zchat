@@ -26,7 +26,9 @@ export const sendMessage = async( req: AuthRequest, res: Response ) =>{
             text
         })
 
-        res.json(newMsg)
+        const populateMsg = await Message.findById(newMsg._id).populate('sender', 'name username')
+        res.json(populateMsg)
+        
     } catch (error) {
         console.error(error)
         res.status(500).json({ error: 'Failed to send message'})

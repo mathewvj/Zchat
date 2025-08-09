@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface Iconversation extends Document{
     participants: string[]
     createdAt: Date
+    updatedAt: Date
 }
 
 const conversationSchema = new Schema<Iconversation>(
