@@ -1,0 +1,32 @@
+.authContainer {
+  max-width: 400px;
+  margin: 4rem auto;
+  padding: 2rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  text-align: center;
+}
+
+.formm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formm input {
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.buttonn {
+  padding: 0.75rem;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 5px;
+}
