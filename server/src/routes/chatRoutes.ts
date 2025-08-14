@@ -1,10 +1,11 @@
 import express from 'express'
-import { getOrCreateConversation, getRecentChats } from '../controllers/chatController'
+import { getOrCreateConversation, getRecentChats, getConversationUserDetails } from '../controllers/chatController'
 import { authenticateUser } from '../middlewares/authMiddleware'
 
 const router = express.Router()
 
 router.post('/start',authenticateUser, getOrCreateConversation)
 router.get('/recent', authenticateUser, getRecentChats )
+router.get('/:conversationId',authenticateUser, getConversationUserDetails)
 
 export default router

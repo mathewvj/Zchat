@@ -1,7 +1,8 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
+import { IUser } from "./User";
 
 export interface Iconversation extends Document{
-    participants: string[]
+    participants: (Types.ObjectId | IUser)[]
     createdAt: Date
     updatedAt: Date
 }

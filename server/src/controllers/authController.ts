@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken'
 import { Request, Response } from 'express'
+import { OAuth2Client } from 'google-auth-library'
 import User from '../models/User'
 import bcrypt from 'bcryptjs'
+import { AuthRequest } from '../middlewares/authMiddleware'
 
 
 export const signup = async ( req: Request, res: Response) => {
@@ -34,6 +36,8 @@ export const loginUser = async ( req: Request, res : Response ) =>{
         const user = await User.findOne({ $or: [{ username: identifier }, { email: identifier }] })
 
         if(!user) return res.status(404).json({ message: 'User not found'})
+        
+        if(!user.password) return res.status(400).json({ message: "Please login with google"})
 
         const isMatch = await bcrypt.compare(password, user.password)
         if(!isMatch) return res.status(401).json({ message: 'Invalid credentials'})
@@ -50,5 +54,38 @@ export const loginUser = async ( req: Request, res : Response ) =>{
         return res.status(500).json({ message: 'Login failed', error: error.message })
         
         
+    }
+}
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+
+export const googleAuth =  async(req : AuthRequest, res: Response ) => {
+    try {
+        const { token } = req.body
+
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        })
+        
+        const payload = ticket.getPayload()
+        if(!payload) throw new Error("invalid google token")
+
+        const { sub: googleId, email, name } = payload
+
+        let user = await User.findOne({ email })
+
+        if(!user) {
+            const username = email?.split("@")[0]
+            user = await User.create({ name, username, email, googleId })
+        }else if(!user.googleId){
+            user.googleId = googleId
+            await user.save()
+        }
+        res.json({ success: true, user})
+
+    } catch (error : any) {
+        console.error("something wrong:", error)
+        res.status(400).json({ success: false, message: error.message})
     }
 }

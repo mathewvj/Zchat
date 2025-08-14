@@ -25,6 +25,7 @@ export default function LoginPage(){
 
             const data = await res.json()
             if(res.ok){
+                localStorage.setItem("userId",data.user._id)
                 localStorage.setItem("token",data.token)
                 router.push("/chat")
             }else{

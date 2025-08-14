@@ -57,3 +57,24 @@ export const getRecentChats = async (req: AuthRequest, res: Response ) => {
         res.status(500).json({ message: 'failed to fetch recent chats'})
     }
 }
+
+
+export const getConversationUserDetails = async (req: AuthRequest, res : Response ) => {
+    try {
+        const { conversationId } = req.params
+
+        const conversation = await Conversation.findById(conversationId).populate('participants', '_id name username').lean()
+        if(!conversation){
+            return res.status(404).json({ message: 'Conversation not found'})
+        }
+
+        const isParticipant = conversation.participants.some((p) => p._id.toString() === req.user?.id)
+        if(!isParticipant){
+            return res.status(403).json({ message: 'Not authorized to view this conversation '})
+        }
+        res.json(conversation)
+    } catch (error) {
+        console.error('Error fetching conversation',error)
+        res.status(500).json({ message: 'Server error '})
+    }
+}
