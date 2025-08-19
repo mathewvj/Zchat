@@ -61,10 +61,10 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 export const googleAuth =  async(req : AuthRequest, res: Response ) => {
     try {
-        const { token } = req.body
+        const { idToken } = req.body
 
         const ticket = await client.verifyIdToken({
-            idToken: token,
+            idToken: idToken,
             audience: process.env.GOOGLE_CLIENT_ID,
         })
         
@@ -82,7 +82,14 @@ export const googleAuth =  async(req : AuthRequest, res: Response ) => {
             user.googleId = googleId
             await user.save()
         }
-        res.json({ success: true, user})
+
+        const appToken = jwt.sign(
+            { id: user._id, email: user.email },
+            process.env.JWT_SECRET!,
+            { expiresIn: "7d" } 
+        ) 
+
+        res.json({ success: true, token: appToken, user })
 
     } catch (error : any) {
         console.error("something wrong:", error)

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import styles from "./page.module.css"
+import GoogleLoginButton from "@/components/GoogleLoginButton"
 
 export default function LandingPage(){
   const router = useRouter()
@@ -16,6 +17,9 @@ export default function LandingPage(){
           <button onClick={()=> router.push("/signup")} className={styles.button}>
             Signup
           </button>
+      </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <GoogleLoginButton/>
       </div>
     </main>
   )
