@@ -4,7 +4,9 @@ export interface IMessage extends Document {
 
     conversationId : Types.ObjectId
     sender: Types.ObjectId
-    text : string
+    type: "text" | "voice"
+    text?: string
+    voiceUrl?: string
     createdAt: Date
 }
 
@@ -13,7 +15,9 @@ const messageSchema = new Schema<IMessage>(
     {
         conversationId: { type: Schema.Types.ObjectId, ref: 'Conversation'},
         sender: { type: Schema.Types.ObjectId, ref: 'User'},
-        text: String
+        type: { type: String, enum:[ "text", "voice" ], required: true },
+        text: { type: String},
+        voiceUrl: { type: String }
 
     },
     { timestamps: true }

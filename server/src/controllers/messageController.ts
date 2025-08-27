@@ -16,15 +16,23 @@ export const getMessage = async( req: AuthRequest, res: Response ) => {
 }
 
 export const sendMessage = async( req: AuthRequest, res: Response ) =>{
-    const { conversationId, text } = req.body
+    const { conversationId, type, text, voiceUrl } = req.body
     const senderId = req.user?.id
 
     try {
-        const newMsg = await Message.create({
+        if(!conversationId || !senderId || !type){
+            return res.status(400).json({ message: "missing required fields" })
+        }
+
+        const newMsg = new Message({
             conversationId,
             sender: senderId,
-            text
+            type,
+            text: type === "text" ? text: undefined,
+            voiceUrl: type === "voice" ? voiceUrl: undefined
         })
+
+        await newMsg.save()
 
         const populateMsg = await Message.findById(newMsg._id).populate('sender', 'name username')
         res.json(populateMsg)
