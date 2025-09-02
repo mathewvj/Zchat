@@ -7,7 +7,7 @@ export const getMessage = async( req: AuthRequest, res: Response ) => {
     const { conversationId } = req.params
 
     try {
-        const messages = await Message.find({ conversationId }).sort({ createdAt: 1 }).populate('sender','username name').sort({ createdAt: 1})
+        const messages = await Message.find({ conversationId }).sort({ createdAt: 1 }).populate('sender','name username').sort({ createdAt: 1})
         res.json(messages)
     } catch (error) {
         console.error(error)
@@ -16,7 +16,9 @@ export const getMessage = async( req: AuthRequest, res: Response ) => {
 }
 
 export const sendMessage = async( req: AuthRequest, res: Response ) =>{
+    console.log("Req.body:", req.body)
     const { conversationId, type, text, voiceUrl } = req.body
+    
     const senderId = req.user?.id
 
     try {

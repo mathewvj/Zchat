@@ -157,17 +157,19 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
 
            try {
             //upload file to backend
+            const token = localStorage.getItem("token")
              const uploadRes = await fetch("http://localhost:5000/api/voice/upload-voice",{
                 method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
                 body: formData,
             })
             const { fileUrl } = await uploadRes.json()
 
             //save message in DB
-            const token = localStorage.getItem("token")
+            
             const msgRes = await fetch("http://localhost:5000/api/message/send",{
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { "Content-Type" : "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ conversationId, type: "voice", voiceUrl: fileUrl})
             })
 
@@ -269,15 +271,21 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                         className="flex-1 h-12 rounded-lg border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary"
                         aria-label="Type a message"
                     />
-                    <VoiceRecorder onSend={handleVoice}/>
-                    <Button
-                        type="submit"
-                        disabled={isLoading || !text.trim()}
-                        className="h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                        aria-label="Send message"
-                    >
-                        <Send className="h-5 w-5" />
-                    </Button>
+
+                    {text.trim() ? (
+                         <Button
+                            type="submit"
+                            disabled={isLoading || !text.trim()}
+                            className="h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                            aria-label="Send message"
+                        >
+                            <Send className="h-5 w-5" />
+                        </Button>
+                    ):(
+                        <VoiceRecorder onSend={handleVoice}/>
+                    )}
+                    
+                   
                 </form>
             </CardContent>
         </div>

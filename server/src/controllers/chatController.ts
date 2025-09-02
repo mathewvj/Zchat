@@ -44,7 +44,7 @@ export const getRecentChats = async (req: AuthRequest, res: Response ) => {
                 return {
                     _id: conversation._id,
                     user: otherUser,
-                    lastMessage : lastMessage?.text || "",
+                    lastMessage : lastMessage?.text || (lastMessage?.voiceUrl ? "🎤VoiceMessage":""),
                     lastMessageTime : lastMessage?.createdAt || updateAt,
                 }
             })
