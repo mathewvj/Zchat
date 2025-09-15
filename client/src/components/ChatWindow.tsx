@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Send, ArrowLeft } from "lucide-react"
 import VoiceRecorder from "./VoiceRecorder"
+import MessageItem from "./MessageItem"
+import { SocketAddress } from "net"
 
 interface Message {
     _id: string
@@ -187,6 +189,32 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
            }
         }
 
+        const handleEditMessage = async(m: Message, newText: string) => {
+            const token = localStorage.getItem("token")
+            const res = await fetch(`http://localhost:5000/api/message/edit/${m._id}`,{
+                method: "PATCH",
+                headers: {
+                    "Content-Type":"application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ newText })
+            })
+
+            if(!res.ok){
+                const err = await res.json()
+                console.error("Edit failed", err.message)
+                return
+            }
+
+            const updated = await res.json()
+
+            setMessages((prev) => 
+                prev.map((msg) => (msg._id === updated._id ? updated: msg))
+            )
+
+            socket.emit("sendMessage", { roomId: conversationId, message: updated })
+        }
+
     return (
         <div className="h-screen w-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
             {/* Fixed header with chat partner's name and Back button */}
@@ -230,32 +258,49 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                     </p>
                 ) : (
                     messages.map((msg) => (
-                        <div
+                        <MessageItem
                             key={msg._id}
-                            className={`flex ${
-                                msg.sender._id === localStorage.getItem("userId")
-                                    ? "justify-end"
-                                    : "justify-start"
-                            }`}
-                        >
-                            <div
-                                className={`max-w-xs p-3 rounded-lg ${
-                                    msg.sender._id === localStorage.getItem("userId")
-                                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                                        : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
-                                }`}
-                            >
-                               {msg.type === "voice" && msg.voiceUrl ? (
-                                <audio controls src={msg.voiceUrl} className="w-40"></audio>):( <p className="text-sm">{msg.text}</p>)
-                               }
-                                <p className="text-xs text-gray-300 dark:text-gray-500 mt-1">
-                                    {new Date(msg.createdAt).toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
-                                </p>
-                            </div>
-                        </div>
+                            msg={msg}
+                            currentUserId={localStorage.getItem("userId") || ""}
+                            onEdit={(m) => {
+                                console.log("Edit this message",m)
+                                const newText = prompt("Edit your message:", m.text  || "")
+                                if(newText && newText.trim()){
+                                    handleEditMessage(m, newText.trim())
+                                }
+                            }}
+                            onSelect={(m) => {
+                                console.log("Selected message:",m)
+                            }}
+                        />
+                        // <div
+                        //     key={msg._id}
+                        //     className={`flex ${
+                        //         msg.sender._id === localStorage.getItem("userId")
+                        //             ? "justify-end"
+                        //             : "justify-start"
+                        //     }`}
+                        // >
+                        //     <div
+                        //         className={`max-w-xs p-3 rounded-lg ${
+                        //             msg.sender._id === localStorage.getItem("userId")
+                        //                 ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                        //                 : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                        //         }`}
+                        //     >
+                        //        {msg.type === "voice" && msg.voiceUrl ? (
+                        //         <audio controls src={msg.voiceUrl} className="w-40"></audio>):( <p className="text-sm">{msg.text}</p>)
+                        //        }
+                        //         <p className="text-xs text-gray-300 dark:text-gray-500 mt-1">
+                        //             {new Date(msg.createdAt).toLocaleTimeString([], {
+                        //                 hour: "2-digit",
+                        //                 minute: "2-digit",
+                        //             })}
+                        //         </p>
+                        //     </div>
+                        // </div>
+
+
                     ))
                 )}
                 <div ref={messagesEndRef} />

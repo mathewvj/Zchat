@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Message from "../models/messageModel";
 import { AuthRequest } from "../middlewares/authMiddleware";
+import Conversation from "../models/Conversation";
 
 
 export const getMessage = async( req: AuthRequest, res: Response ) => {
@@ -42,5 +43,39 @@ export const sendMessage = async( req: AuthRequest, res: Response ) =>{
     } catch (error) {
         console.error(error)
         res.status(500).json({ error: 'Failed to send message'})
+    }
+}
+
+
+export const editMessage = async(req: AuthRequest, res: Response ) => {
+    const { id } = req.params
+    const { text } = req.body
+    const userId = req.user?.id
+
+    try {
+        if(!text) return res.status(400).json({ message: "New text required "})
+        
+        const msg = await Message.findById(id)
+        if(!msg) return res.status(404).json({ message: "Message not found"})
+
+        if(msg.sender.toString() !== userId){
+            return res.status(403).json({ message: "Not authorized to edit"})
+        }
+
+        const fifteenMinutes = 15 * 60 * 1000
+        const createdAt = msg.createdAt.getTime()
+        const now = Date.now()
+
+        if(now - createdAt > fifteenMinutes){
+            return res.status(400).json({ message: "Edit time window has passed"})
+        }
+
+        msg.text = text
+        await msg.save()
+
+
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: "Failed to edit message"})
     }
 }
