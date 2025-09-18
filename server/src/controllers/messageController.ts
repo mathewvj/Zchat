@@ -49,11 +49,12 @@ export const sendMessage = async( req: AuthRequest, res: Response ) =>{
 
 export const editMessage = async(req: AuthRequest, res: Response ) => {
     const { id } = req.params
-    const { text } = req.body
+    const { newText } = req.body
     const userId = req.user?.id
+    console.log(req.body)
 
     try {
-        if(!text) return res.status(400).json({ message: "New text required "})
+        if(!newText) return res.status(400).json({ message: "New text required "})
         
         const msg = await Message.findById(id)
         if(!msg) return res.status(404).json({ message: "Message not found"})
@@ -70,7 +71,7 @@ export const editMessage = async(req: AuthRequest, res: Response ) => {
             return res.status(400).json({ message: "Edit time window has passed"})
         }
 
-        msg.text = text
+        msg.text = newText
         await msg.save()
 
 

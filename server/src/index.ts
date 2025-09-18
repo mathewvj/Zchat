@@ -51,6 +51,11 @@ io.on("connection", (socket) => {
         console.log(`message sent to room ${roomId}:`, message)
     })
 
+    socket.on("messageEdited",({ roomId, message}) =>{
+        console.log("messageEdited recieved from client", roomId, message)
+        socket.to(roomId).emit("messageUpdated",message)
+    })
+
     // socket.on("sendVoice", ({ roomId, message }) => {
     //     socket.to(roomId).emit("receiveVoice", message)
     // })

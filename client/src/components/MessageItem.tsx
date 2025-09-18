@@ -12,6 +12,7 @@ interface Message {
     }
     type: "text" | "voice"
     createdAt: string
+    updatedAt: string
 }
 
 interface Props{
@@ -64,6 +65,9 @@ export default function MessageItem({ msg, currentUserId, onEdit, onSelect } : P
 
                     <p className="text-xs text-gray-300 dark:text-gray-500 mt-1">
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour:"2-digit", minute: '2-digit' })}
+                        { new Date(msg.updatedAt).getTime() !== new Date(msg.createdAt).getTime() &&
+                        <span className="ml-1 italic text-gray-400">(edited)</span>
+                        }
                     </p>
 
                     {showEdit && canEdit && (

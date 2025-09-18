@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Send, ArrowLeft } from "lucide-react"
 import VoiceRecorder from "./VoiceRecorder"
 import MessageItem from "./MessageItem"
-import { SocketAddress } from "net"
+
 
 interface Message {
     _id: string
@@ -22,6 +22,7 @@ interface Message {
     }
     type: "text" | "voice"
     createdAt: string
+    updatedAt: string
 }
 
 interface Conversation {
@@ -41,13 +42,12 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
     const router = useRouter()
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
+    const scrollToBottom = () => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+
     useEffect(() => {
         if(!conversationId) return
-
-        const scrollToBottom = () => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-        }
-
 
 
         const token = localStorage.getItem("token")
@@ -94,6 +94,16 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
             scrollToBottom()
         })
 
+        socket.on("messageUpdated",(updated: Message) => {
+            setMessages(prev =>
+                prev.map(msg =>
+                    msg._id === updated._id ? updated : msg
+                )
+            )
+            console.log("Messageudated recieved:",updated)
+            scrollToBottom()
+        })
+
         // socket.on("receiveVoice", (fileUrl: string) => {
         //     const newVoiceMsg: Message = {
         //         _id: Date.now().toString(),
@@ -109,6 +119,7 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
 
         return () => {
             socket.off("receiveMessage")
+            socket.off("messageUpdated")
             // socket.off("receiveVoice")
         }
         
@@ -149,6 +160,7 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
             console.error("Error sending message:", error)
         } finally {
             setIsLoading(false)
+            scrollToBottom()
         }
 
         
@@ -186,12 +198,16 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
             
            } catch (error) {
             console.error("Voice upload error", error)
+           }finally {
+            scrollToBottom()
            }
         }
 
         const handleEditMessage = async(m: Message, newText: string) => {
             const token = localStorage.getItem("token")
-            const res = await fetch(`http://localhost:5000/api/message/edit/${m._id}`,{
+            if(!token) return
+            try {
+                const res = await fetch(`http://localhost:5000/api/message/edit/${m._id}`,{
                 method: "PATCH",
                 headers: {
                     "Content-Type":"application/json",
@@ -212,7 +228,13 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                 prev.map((msg) => (msg._id === updated._id ? updated: msg))
             )
 
-            socket.emit("sendMessage", { roomId: conversationId, message: updated })
+            socket.emit("messageEdited", { roomId: conversationId, message: updated })
+            
+            } catch (error) {
+                console.error("Edit request error:",error)
+            } finally{
+                scrollToBottom()
+            }
         }
 
     return (
@@ -268,6 +290,7 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                                 if(newText && newText.trim()){
                                     handleEditMessage(m, newText.trim())
                                 }
+                                console.log("Sending text:",newText)
                             }}
                             onSelect={(m) => {
                                 console.log("Selected message:",m)
