@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Send, ArrowLeft } from "lucide-react"
 import VoiceRecorder from "./VoiceRecorder"
 import MessageItem from "./MessageItem"
+import { preconnect } from "react-dom"
 
 
 interface Message {
@@ -41,9 +42,10 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const [ editingMessage, setEditingMessage] = useState<Message | null>(null)
 
     const scrollToBottom = () => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
 
     useEffect(() => {
@@ -132,30 +134,59 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
         setIsLoading(true)
         try {
             const token = localStorage.getItem("token")
-            const res = await fetch("http://localhost:5000/api/message/send", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                credentials: "include",
-                body: JSON.stringify({ conversationId, type: "text", text }),
-            })
+            if(editingMessage){
+                    const res = await fetch(`http://localhost:5000/api/message/edit/${editingMessage._id}`,{
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type":"application/json",
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ newText: text })
+                })
 
-            if (!res.ok) {
-                const err = await res.json()
-                console.error("Send error:", err.message)
-                return
+                if(!res.ok){
+                    const err = await res.json()
+                    console.error("Edit failed", err.message)
+                    return
+                }
+
+                const updated: Message = await res.json()
+
+                setMessages((prev) => 
+                    prev.map((msg) => (msg._id === updated._id ? updated: msg))
+                )
+
+                socket.emit("messageEdited", { roomId: conversationId, message: updated })
+                setEditingMessage(null)
+                setText("")
+
+           }else {
+
+                const res = await fetch("http://localhost:5000/api/message/send", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    credentials: "include",
+                    body: JSON.stringify({ conversationId, type: "text", text }),
+                })
+
+                if (!res.ok) {
+                    const err = await res.json()
+                    console.error("Send error:", err.message)
+                    return
+                }
+
+                const newMsg = await res.json()
+                setMessages((prev) => [...prev, newMsg])
+                socket.emit("sendMessage", {
+                    roomId: conversationId,
+                    message: newMsg,
+                })
+                setText("")
             }
 
-            const newMsg = await res.json()
-            setMessages((prev) => [...prev, newMsg])
-            socket.emit("sendMessage", {
-                roomId: conversationId,
-                message: newMsg,
-            })
-            setText("")
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
         } catch (error) {
             console.error("Error sending message:", error)
         } finally {
@@ -166,76 +197,60 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
         
     }
     const handleVoice = async( audioBlob: Blob) =>{
-            const formData = new FormData()
-            formData.append("voice", audioBlob, `voice-${Date.now()}.webm`)
+        const formData = new FormData()
+        formData.append("voice", audioBlob, `voice-${Date.now()}.webm`)
 
-           try {
-            //upload file to backend
-            const token = localStorage.getItem("token")
-             const uploadRes = await fetch("http://localhost:5000/api/voice/upload-voice",{
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-            })
-            const { fileUrl } = await uploadRes.json()
+        try {
+        //upload file to backend
+        const token = localStorage.getItem("token")
+            const uploadRes = await fetch("http://localhost:5000/api/voice/upload-voice",{
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+        })
+        const { fileUrl } = await uploadRes.json()
 
-            //save message in DB
-            
-            const msgRes = await fetch("http://localhost:5000/api/message/send",{
-                method: "POST",
-                headers: { "Content-Type" : "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ conversationId, type: "voice", voiceUrl: fileUrl})
-            })
+        //save message in DB
+        
+        const msgRes = await fetch("http://localhost:5000/api/message/send",{
+            method: "POST",
+            headers: { "Content-Type" : "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ conversationId, type: "voice", voiceUrl: fileUrl})
+        })
 
-            const newVoiceMsg : Message = await msgRes.json()
+        const newVoiceMsg : Message = await msgRes.json()
 
-            setMessages((prev) => [...prev, newVoiceMsg])
+        setMessages((prev) => [...prev, newVoiceMsg])
 
-            socket.emit("sendMessage",{
-                roomId: conversationId,
-                message: newVoiceMsg,
-            })
-            
-           } catch (error) {
-            console.error("Voice upload error", error)
-           }finally {
+        socket.emit("sendMessage",{
+            roomId: conversationId,
+            message: newVoiceMsg,
+        })
+        
+        } catch (error) {
+        console.error("Voice upload error", error)
+        }finally {
             scrollToBottom()
-           }
         }
+    }
 
-        const handleEditMessage = async(m: Message, newText: string) => {
-            const token = localStorage.getItem("token")
-            if(!token) return
-            try {
-                const res = await fetch(`http://localhost:5000/api/message/edit/${m._id}`,{
-                method: "PATCH",
+    const handleDeleteMessage = async (m: Message) => {
+        const token = localStorage.getItem("token")
+        if(!token) return
+        try {
+            const res = await fetch(`http://localhost:5000/api/message/${m._id}`,{
+                method: "DELETE",
                 headers: {
-                    "Content-Type":"application/json",
                     Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ newText })
+                }
             })
 
-            if(!res.ok){
-                const err = await res.json()
-                console.error("Edit failed", err.message)
-                return
-            }
-
-            const updated = await res.json()
-
-            setMessages((prev) => 
-                prev.map((msg) => (msg._id === updated._id ? updated: msg))
-            )
-
-            socket.emit("messageEdited", { roomId: conversationId, message: updated })
-            
-            } catch (error) {
-                console.error("Edit request error:",error)
-            } finally{
-                scrollToBottom()
-            }
+            setMessages(prev => prev.filter(msg => msg._id !== m._id ))
+            socket.emit("messageDeleted",{ roomId: conversationId, messageId: m._id })
+        } catch (error) {
+           console.error("Error while deleting",error) 
         }
+    }
 
     return (
         <div className="h-screen w-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
@@ -285,23 +300,26 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                             msg={msg}
                             currentUserId={localStorage.getItem("userId") || ""}
                             onEdit={(m) => {
-                                console.log("Edit this message",m)
-                                const newText = prompt("Edit your message:", m.text  || "")
-                                if(newText && newText.trim()){
-                                    handleEditMessage(m, newText.trim())
-                                }
-                                console.log("Sending text:",newText)
+                                // console.log("Edit this message",m)
+                                // const newText = prompt("Edit your message:", m.text  || "")
+                                // if(newText && newText.trim()){
+                                //     handleEditMessage(m, newText.trim())
+                                // }
+                                // console.log("Sending text:",newText)
+
+                                setEditingMessage(m)
+                                setText(m.text || "")
                             }}
-                            onSelect={(m) => {
-                                console.log("Selected message:",m)
-                            }}
+                            onDelete={()=>console.log("hi")}
+                            onReply={()=> console.log("jj")}
                         />
+                        
                         // <div
                         //     key={msg._id}
                         //     className={`flex ${
                         //         msg.sender._id === localStorage.getItem("userId")
                         //             ? "justify-end"
-                        //             : "justify-start"
+                        //             : "justify-start"        
                         //     }`}
                         // >
                         //     <div
@@ -355,6 +373,21 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                     
                    
                 </form>
+                {editingMessage && (
+                    <div className="mb-2 text-sm text-gray-500 flex items-center">
+                        Editing message…
+                        <button
+                            className="ml-2 text-blue-500 underline"
+                            onClick={() => {
+                                setEditingMessage(null);
+                                setText(""); // clear input
+                            }}
+                        >
+                            cancel
+                        </button>
+                    </div>
+                )}
+
             </CardContent>
         </div>
     )

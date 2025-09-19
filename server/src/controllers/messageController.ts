@@ -73,10 +73,34 @@ export const editMessage = async(req: AuthRequest, res: Response ) => {
 
         msg.text = newText
         await msg.save()
+        
+        const populated = await msg.populate('sender', 'name username')
+        res.json(populated)
 
 
     } catch (error) {
         console.error(error)
         res.status(500).json({ message: "Failed to edit message"})
+    }
+}
+
+export const deleteMessges = async(req: AuthRequest, res: Response) => {
+    const { ids } = req.body
+    const userId = req.user?.id
+
+    try {
+        if(!Array.isArray(ids) || ids.length === 0){
+            return res.status(400).json({ message: "No message ids provided" })
+        }
+
+        const result = await Message.deleteMany({
+            _id: { $in: ids },
+            sender: userId
+        })
+
+        res.json({ deletedCount: result.deletedCount})
+    } catch (error) {
+        console.error("Delete error:", error)
+        res.status(500).json({ message: "Failed to delete messages" })
     }
 }

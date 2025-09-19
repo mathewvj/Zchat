@@ -56,6 +56,10 @@ io.on("connection", (socket) => {
         socket.to(roomId).emit("messageUpdated",message)
     })
 
+    socket.on("messagesDeleted",({ roomId, ids }) => {
+        socket.to(roomId).emit("messaegesRemoved", ids)
+    })
+
     // socket.on("sendVoice", ({ roomId, message }) => {
     //     socket.to(roomId).emit("receiveVoice", message)
     // })
